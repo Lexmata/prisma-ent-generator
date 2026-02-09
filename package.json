@@ -1,0 +1,51 @@
+{
+  "name": "prisma-ent-generator",
+  "version": "0.1.0",
+  "description": "Prisma generator that produces Go Ent schema files from your Prisma schema",
+  "license": "MIT",
+  "author": {
+    "name": "Lexmata LLC",
+    "email": "jquinn@lexmata.ai"
+  },
+  "main": "dist/index.js",
+  "bin": {
+    "prisma-ent-generator": "dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "generate": "pnpm build && prisma generate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "prisma",
+    "generator",
+    "golang",
+    "ent",
+    "entgo",
+    "codegen",
+    "orm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lexmata/prisma-ent-generator"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@prisma/generator-helper": "^6.0.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.0.0",
+    "@types/node": "^22.0.0",
+    "prisma": "^6.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
