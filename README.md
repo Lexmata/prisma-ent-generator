@@ -20,9 +20,9 @@ Define your data model once in Prisma and generate fully working Ent schemas —
 ## Installation
 
 ```bash
-npm install prisma-ent-generator
+npm install @lexmata/prisma-ent-generator
 # or
-pnpm add prisma-ent-generator
+pnpm add @lexmata/prisma-ent-generator
 ```
 
 ## Usage
@@ -31,7 +31,7 @@ pnpm add prisma-ent-generator
 
 ```prisma
 generator ent {
-  provider = "prisma-ent-generator"
+  provider = "@lexmata/prisma-ent-generator"
   output   = "./ent"
 }
 ```
