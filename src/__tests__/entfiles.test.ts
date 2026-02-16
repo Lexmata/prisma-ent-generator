@@ -9,7 +9,7 @@ describe('generateGenerateGo', () => {
   });
 
   it('includes the go:generate directive', () => {
-    expect(output).toContain('//go:generate go run -mod=mod entgo.io/ent/cmd/ent generate ./schema');
+    expect(output).toContain('//go:generate go run entgo.io/ent/cmd/ent generate ./schema');
   });
 
   it('includes the generated file header', () => {

@@ -12,7 +12,7 @@ export function generateGenerateGo(): string {
   lines.push(fileHeader());
   lines.push('package ent');
   lines.push('');
-  lines.push('//go:generate go run -mod=mod entgo.io/ent/cmd/ent generate ./schema');
+  lines.push('//go:generate go run entgo.io/ent/cmd/ent generate ./schema');
   lines.push('');
 
   return lines.join('\n');
