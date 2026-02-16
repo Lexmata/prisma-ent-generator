@@ -1,5 +1,6 @@
 import type { DMMF } from '@prisma/generator-helper';
 import type { GoImports } from './type-map';
+import { safeGoTypeName } from '../utils';
 
 /**
  * Information about a generated Ent edge.
@@ -55,9 +56,9 @@ function generateEdge(
   const targetModel = allModels.find((m) => m.name === targetModelName);
   if (!targetModel) return null;
 
-  // Find the inverse relation field on the target model
+  // Find the inverse relation field on the target model (exclude the current field for self-refs)
   const inverseField = targetModel.fields.find(
-    (f) => f.kind === 'object' && f.relationName === field.relationName,
+    (f) => f.kind === 'object' && f.relationName === field.relationName && f.name !== field.name,
   );
 
   const hasFK =
@@ -100,7 +101,8 @@ function buildEdgeFrom(
   const refName = inverseField ? inverseField.name : targetModelName;
 
   const parts: string[] = [];
-  parts.push(`edge.From("${edgeName}", ${targetModelName}.Type)`);
+  const safeTarget = safeGoTypeName(targetModelName);
+  parts.push(`edge.From("${edgeName}", ${safeTarget}.Type)`);
   parts.push(`.Ref("${refName}")`);
   parts.push('.Unique()');
 
@@ -125,8 +127,9 @@ function buildEdgeTo(
   edgeName: string,
   targetModelName: string,
 ): string {
+  const safeTarget = safeGoTypeName(targetModelName);
   const parts: string[] = [];
-  parts.push(`edge.To("${edgeName}", ${targetModelName}.Type)`);
+  parts.push(`edge.To("${edgeName}", ${safeTarget}.Type)`);
 
   if (!field.isList) {
     parts.push('.Unique()');
@@ -170,8 +173,9 @@ function buildImplicitEdge(
 
   // Back-reference
   const refName = inverseField ? inverseField.name : targetModelName;
+  const safeTarget = safeGoTypeName(targetModelName);
   const parts: string[] = [];
-  parts.push(`edge.From("${edgeName}", ${targetModelName}.Type)`);
+  parts.push(`edge.From("${edgeName}", ${safeTarget}.Type)`);
   parts.push(`.Ref("${refName}")`);
 
   if (!field.isList) {

@@ -42,6 +42,17 @@ export function generateFields(
   enumDefs: Map<string, DMMF.DatamodelEnum>,
   imports: GoImports,
 ): string[] {
+  // Build set of FK fields whose relation is optional.
+  // In Ent, FK field optionality must match edge optionality.
+  const optionalRelationFKs = new Set<string>();
+  for (const f of fields) {
+    if (f.kind === 'object' && !f.isRequired && f.relationFromFields) {
+      for (const fk of f.relationFromFields) {
+        optionalRelationFKs.add(fk);
+      }
+    }
+  }
+
   const lines: string[] = [];
 
   for (const f of fields) {
@@ -51,7 +62,7 @@ export function generateFields(
     // Skip unsupported fields (e.g., vector types)
     if (f.kind === 'unsupported') continue;
 
-    const line = generateField(f, fkFieldNames, enumDefs, imports);
+    const line = generateField(f, fkFieldNames, enumDefs, imports, optionalRelationFKs);
     if (line !== null) {
       lines.push(line);
     }
@@ -69,6 +80,7 @@ function generateField(
   fkFieldNames: Set<string>,
   enumDefs: Map<string, DMMF.DatamodelEnum>,
   imports: GoImports,
+  optionalRelationFKs?: Set<string>,
 ): string | null {
   // Handle @id fields
   if (field.isId) {
@@ -82,7 +94,7 @@ function generateField(
     return generateEnumField(field, fieldName, enumDefs, imports);
   }
 
-  return generateScalarField(field, fieldName, fkFieldNames, imports);
+  return generateScalarField(field, fieldName, fkFieldNames, imports, optionalRelationFKs);
 }
 
 /**
@@ -162,6 +174,7 @@ function generateScalarField(
   fieldName: string,
   fkFieldNames: Set<string>,
   imports: GoImports,
+  optionalRelationFKs?: Set<string>,
 ): string {
   // JSON fields have special syntax in Ent: field.JSON("name", type)
   if (field.type === 'Json') {
@@ -193,8 +206,10 @@ function generateScalarField(
     parts.push('.Unique()');
   }
 
-  // Optional
-  if (!field.isRequired) {
+  // Optional — also mark FK fields as optional when their relation is optional,
+  // because Ent requires FK field optionality to match edge optionality.
+  const isOptional = !field.isRequired || (optionalRelationFKs?.has(field.name) ?? false);
+  if (isOptional) {
     parts.push('.Optional()');
   }
 
@@ -208,7 +223,7 @@ function generateScalarField(
 
   // Handle defaults
   if (field.hasDefaultValue && field.default !== undefined) {
-    const defaultStr = formatDefault(field.default, field.type, imports);
+    const defaultStr = formatDefault(field.default, field.type, imports, isUuidNativeType(nativeType));
     if (defaultStr) {
       parts.push(defaultStr);
     }
@@ -296,6 +311,7 @@ function formatDefault(
   defaultValue: unknown,
   prismaType: string,
   imports: GoImports,
+  isUuidField: boolean = false,
 ): string | null {
   if (defaultValue === undefined || defaultValue === null) {
     return null;
@@ -338,6 +354,11 @@ function formatDefault(
     // If the Prisma type is BigInt and the string is a valid number, emit as numeric.
     if (prismaType === 'BigInt' && /^-?\d+$/.test(defaultValue)) {
       return `.Default(${defaultValue})`;
+    }
+    // UUID fields require func() uuid.UUID for defaults, not a bare value.
+    if (isUuidField) {
+      imports.uuid = true;
+      return `.Default(func() uuid.UUID { return uuid.MustParse("${escapeGoString(defaultValue)}") })`;
     }
     return `.Default("${escapeGoString(defaultValue)}")`;
   }

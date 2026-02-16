@@ -2,7 +2,7 @@ import type { DMMF } from '@prisma/generator-helper';
 import { createEmptyImports, buildImportBlock, type GoImports } from './type-map';
 import { generateFields, collectFKFieldNames } from './field';
 import { generateEdges } from './edge';
-import { fileHeader } from '../utils';
+import { fileHeader, safeGoTypeName } from '../utils';
 
 /**
  * Index definition from the DMMF Datamodel.indexes array.
@@ -36,6 +36,7 @@ export function generateSchema(
   indexes?: readonly DMMFIndex[],
 ): string {
   const imports = createEmptyImports();
+  const typeName = safeGoTypeName(model.name);
 
   // Build enum lookup for this model's enum fields
   const fkFieldNames = collectFKFieldNames(model.fields);
@@ -82,18 +83,18 @@ export function generateSchema(
 
   // Struct definition
   if (model.documentation) {
-    lines.push(`// ${model.name} ${model.documentation}`);
+    lines.push(`// ${typeName} ${model.documentation}`);
   } else {
-    lines.push(`// ${model.name} holds the schema definition for the ${model.name} entity.`);
+    lines.push(`// ${typeName} holds the schema definition for the ${typeName} entity.`);
   }
-  lines.push(`type ${model.name} struct {`);
+  lines.push(`type ${typeName} struct {`);
   lines.push('\tent.Schema');
   lines.push('}');
   lines.push('');
 
   // Fields() method
-  lines.push(`// Fields of the ${model.name}.`);
-  lines.push(`func (${model.name}) Fields() []ent.Field {`);
+  lines.push(`// Fields of the ${typeName}.`);
+  lines.push(`func (${typeName}) Fields() []ent.Field {`);
   if (fieldLines.length === 0) {
     lines.push('\treturn nil');
   } else {
@@ -107,8 +108,8 @@ export function generateSchema(
   lines.push('');
 
   // Edges() method
-  lines.push(`// Edges of the ${model.name}.`);
-  lines.push(`func (${model.name}) Edges() []ent.Edge {`);
+  lines.push(`// Edges of the ${typeName}.`);
+  lines.push(`func (${typeName}) Edges() []ent.Edge {`);
   if (edgeLines.length === 0) {
     lines.push('\treturn nil');
   } else {
@@ -123,8 +124,8 @@ export function generateSchema(
 
   // Indexes() method (if applicable)
   if (indexLines.length > 0) {
-    lines.push(`// Indexes of the ${model.name}.`);
-    lines.push(`func (${model.name}) Indexes() []ent.Index {`);
+    lines.push(`// Indexes of the ${typeName}.`);
+    lines.push(`func (${typeName}) Indexes() []ent.Index {`);
     lines.push('\treturn []ent.Index{');
     for (const il of indexLines) {
       lines.push(`\t\t${il},`);
@@ -136,8 +137,8 @@ export function generateSchema(
 
   // Annotations() method (if @@map is used)
   if (hasTableMapping) {
-    lines.push(`// Annotations of the ${model.name}.`);
-    lines.push(`func (${model.name}) Annotations() []schema.Annotation {`);
+    lines.push(`// Annotations of the ${typeName}.`);
+    lines.push(`func (${typeName}) Annotations() []schema.Annotation {`);
     lines.push('\treturn []schema.Annotation{');
     lines.push(`\t\tentsql.Annotation{Table: "${model.dbName}"},`);
     lines.push('\t}');

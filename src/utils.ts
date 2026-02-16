@@ -14,6 +14,29 @@ export function toSnakeCase(str: string): string {
 }
 
 /**
+ * Go reserved keywords (lowercase).
+ * If a Prisma model name lowercases to one of these, the generated
+ * Go type name gets an "Entity" suffix to avoid compilation errors.
+ */
+const GO_KEYWORDS = new Set([
+  'break', 'case', 'chan', 'const', 'continue', 'default', 'defer',
+  'else', 'fallthrough', 'for', 'func', 'go', 'goto', 'if', 'import',
+  'interface', 'map', 'package', 'range', 'return', 'select', 'struct',
+  'switch', 'type', 'var',
+]);
+
+/**
+ * Return a Go-safe type name for a Prisma model.
+ * Appends "Entity" if the model name conflicts with a Go keyword.
+ */
+export function safeGoTypeName(modelName: string): string {
+  if (GO_KEYWORDS.has(modelName.toLowerCase())) {
+    return `${modelName}Entity`;
+  }
+  return modelName;
+}
+
+/**
  * Convert a PascalCase model name to a lowercase file name for Go files.
  *
  * @example
@@ -21,7 +44,7 @@ export function toSnakeCase(str: string): string {
  * modelToFileName("BlogPost") // "blog_post"
  */
 export function modelToFileName(modelName: string): string {
-  return toSnakeCase(modelName);
+  return toSnakeCase(safeGoTypeName(modelName));
 }
 
 /**

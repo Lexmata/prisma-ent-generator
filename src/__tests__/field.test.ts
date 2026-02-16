@@ -68,7 +68,7 @@ describe('generateFields', () => {
     expect(lines[0]).toContain('.Unique()');
   });
 
-  it('generates an optional field', () => {
+  it('generates an optional field with Nillable', () => {
     const fields = [makeField({ name: 'bio', type: 'String', isRequired: false })];
     const imports = createEmptyImports();
     const lines = generateFields(fields, new Set(), emptyEnumDefs, imports);
