@@ -53,6 +53,8 @@ export async function generate(options: GeneratorOptions): Promise<void> {
   const { datamodel } = options.dmmf;
   const models = [...datamodel.models] as DMMF.Model[];
   const enums = [...datamodel.enums] as DMMF.DatamodelEnum[];
+  // Indexes are available at the datamodel level in Prisma v6 DMMF
+  const indexes = (datamodel as any).indexes ?? [];
 
   // Build enum lookup map
   const enumDefs = new Map<string, DMMF.DatamodelEnum>();
@@ -74,7 +76,7 @@ export async function generate(options: GeneratorOptions): Promise<void> {
 
   // --- schema/*.go (one per Prisma model, always overwritten) ---
   for (const model of models) {
-    const content = generateSchema(model, models, enumDefs);
+    const content = generateSchema(model, models, enumDefs, indexes);
     const fileName = modelToFileName(model.name);
     const filePath = path.join(schemaDir, `${fileName}.go`);
     fs.writeFileSync(filePath, content, 'utf-8');

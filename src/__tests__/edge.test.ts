@@ -103,7 +103,7 @@ describe('generateEdges', () => {
     expect(edges[0]).toContain('edge.From("author", User.Type)');
     expect(edges[0]).toContain('.Ref("posts")');
     expect(edges[0]).toContain('.Unique()');
-    expect(edges[0]).toContain('.Field("author_id")');
+    expect(edges[0]).toContain('.Field("authorId")');
     expect(edges[0]).toContain('.Required()');
   });
 

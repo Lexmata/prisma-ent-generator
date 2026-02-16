@@ -19,8 +19,8 @@ describe('mapPrismaTypeToEnt', () => {
     expect(mapPrismaTypeToEnt('Int')).toBe('Int');
   });
 
-  it('maps BigInt to Int', () => {
-    expect(mapPrismaTypeToEnt('BigInt')).toBe('Int');
+  it('maps BigInt to Int64', () => {
+    expect(mapPrismaTypeToEnt('BigInt')).toBe('Int64');
   });
 
   it('maps Float to Float', () => {

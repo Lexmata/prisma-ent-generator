@@ -1,6 +1,12 @@
 import type { DMMF } from '@prisma/generator-helper';
-import { mapPrismaTypeToEnt, requiresTimeImport, type GoImports } from './type-map';
-import { toSnakeCase } from '../utils';
+import {
+  mapPrismaTypeToEnt,
+  requiresTimeImport,
+  isUuidNativeType,
+  isTextNativeType,
+  extractMaxLen,
+  type GoImports,
+} from './type-map';
 
 /**
  * Determine the set of field names that serve as foreign keys for relations.
@@ -25,6 +31,8 @@ export function collectFKFieldNames(fields: readonly DMMF.Field[]): Set<string> 
  * - Includes FK scalar fields so they can be bound to edges via `.Field()`.
  * - Handles ID fields: skips default Int autoincrement IDs (Ent default),
  *   but generates UUID ID fields when needed.
+ * - Uses Prisma field names (camelCase) as Ent field names, with
+ *   `.StorageKey()` for the DB column mapping from `@map`.
  *
  * @returns An array of Go code strings, each representing one `field.X(...)` call.
  */
@@ -39,6 +47,9 @@ export function generateFields(
   for (const f of fields) {
     // Skip relation fields — they become edges
     if (f.kind === 'object') continue;
+
+    // Skip unsupported fields (e.g., vector types)
+    if (f.kind === 'unsupported') continue;
 
     const line = generateField(f, fkFieldNames, enumDefs, imports);
     if (line !== null) {
@@ -64,7 +75,7 @@ function generateField(
     return generateIdField(field, imports);
   }
 
-  const fieldName = toSnakeCase(field.name);
+  const fieldName = field.name;
   imports.field = true;
 
   if (field.kind === 'enum') {
@@ -95,16 +106,45 @@ function generateIdField(field: DMMF.Field, imports: GoImports): string | null {
 
   imports.field = true;
 
-  // UUID ID field
+  // UUID ID field — detected by @db.Uuid native type or uuid() default
+  const nativeType = (field as any).nativeType as [string, string[]] | null | undefined;
+  const isUuid = isUuidNativeType(nativeType);
+  const hasUuidDefault =
+    field.hasDefaultValue &&
+    typeof field.default === 'object' &&
+    field.default !== null &&
+    'name' in field.default &&
+    (field.default as { name: string }).name === 'uuid';
+
+  if (isUuid || (field.type === 'String' && hasUuidDefault)) {
+    imports.uuid = true;
+    const parts: string[] = [];
+    parts.push('field.UUID("id", uuid.UUID{})');
+
+    // Add StorageKey if mapped to a different column name
+    if (field.dbName && field.dbName !== 'id') {
+      parts.push(`.StorageKey("${field.dbName}")`);
+    }
+
+    if (hasUuidDefault) {
+      parts.push('.Default(uuid.New)');
+    }
+
+    return parts.join('');
+  }
+
+  // CUID ID field
   if (field.type === 'String' && field.hasDefaultValue) {
     const defaultObj = field.default as { name?: string } | undefined;
     if (defaultObj && typeof defaultObj === 'object' && 'name' in defaultObj) {
-      if (defaultObj.name === 'uuid') {
-        imports.uuid = true;
-        return 'field.UUID("id", uuid.UUID{}).Default(uuid.New)';
-      }
       if (defaultObj.name === 'cuid') {
-        return 'field.String("id").MaxLen(30).NotEmpty()';
+        const parts: string[] = [];
+        parts.push('field.String("id")');
+        if (field.dbName && field.dbName !== 'id') {
+          parts.push(`.StorageKey("${field.dbName}")`);
+        }
+        parts.push('.MaxLen(30).NotEmpty()');
+        return parts.join('');
       }
     }
   }
@@ -128,14 +168,24 @@ function generateScalarField(
     return generateJsonField(field, fieldName, imports);
   }
 
-  const entType = mapPrismaTypeToEnt(field.type);
+  const nativeType = (field as any).nativeType as [string, string[]] | null | undefined;
   const parts: string[] = [];
 
-  parts.push(`field.${entType}("${fieldName}")`);
+  // Check for UUID native type on non-ID fields (FK fields, etc.)
+  if (isUuidNativeType(nativeType)) {
+    imports.uuid = true;
+    parts.push(`field.UUID("${fieldName}", uuid.UUID{})`);
+  } else if (isTextNativeType(nativeType)) {
+    // Text fields use field.Text() for unlimited length
+    parts.push(`field.Text("${fieldName}")`);
+  } else {
+    const entType = mapPrismaTypeToEnt(field.type);
+    parts.push(`field.${entType}("${fieldName}")`);
+  }
 
-  // Track time import
-  if (requiresTimeImport(field.type)) {
-    imports.time = true;
+  // StorageKey from @map annotation
+  if (field.dbName) {
+    parts.push(`.StorageKey("${field.dbName}")`);
   }
 
   // Unique constraint
@@ -143,17 +193,9 @@ function generateScalarField(
     parts.push('.Unique()');
   }
 
-  // Optional / Nillable
+  // Optional
   if (!field.isRequired) {
     parts.push('.Optional()');
-    parts.push('.Nillable()');
-  }
-
-  // FK fields that are required should still be Optional in Ent
-  // because the edge manages the FK value
-  if (fkFieldNames.has(field.name) && field.isRequired) {
-    // Don't add Optional — Ent requires the FK field to match the edge's Required status.
-    // The edge definition will handle Required() separately.
   }
 
   // Handle @updatedAt (must come before default handling to avoid double-default)
@@ -170,6 +212,12 @@ function generateScalarField(
     if (defaultStr) {
       parts.push(defaultStr);
     }
+  }
+
+  // MaxLen from @db.VarChar(N) or @db.Char(N) — only for string-like fields
+  const maxLen = extractMaxLen(nativeType);
+  if (maxLen !== null) {
+    parts.push(`.MaxLen(${maxLen})`);
   }
 
   return parts.join('');
@@ -191,6 +239,11 @@ function generateJsonField(
 
   parts.push(`field.JSON("${fieldName}", map[string]interface{}{})`);
 
+  // StorageKey from @map annotation
+  if (field.dbName) {
+    parts.push(`.StorageKey("${field.dbName}")`);
+  }
+
   if (!field.isRequired) {
     parts.push('.Optional()');
   }
@@ -210,6 +263,11 @@ function generateEnumField(
   const parts: string[] = [];
   parts.push(`field.Enum("${fieldName}")`);
 
+  // StorageKey from @map annotation
+  if (field.dbName) {
+    parts.push(`.StorageKey("${field.dbName}")`);
+  }
+
   // Get enum values from the definition
   const enumDef = enumDefs.get(field.type);
   if (enumDef) {
@@ -217,10 +275,9 @@ function generateEnumField(
     parts.push(`.Values(${values})`);
   }
 
-  // Optional / Nillable
+  // Optional
   if (!field.isRequired) {
     parts.push('.Optional()');
-    parts.push('.Nillable()');
   }
 
   // Default value for enums
@@ -260,7 +317,6 @@ function formatDefault(
         imports.uuid = true;
         return '.DefaultFunc(uuid.NewString)';
       case 'cuid':
-        // No built-in Ent CUID; leave a comment
         return '/* .DefaultFunc(cuid.New) — add a CUID library */';
       case 'autoincrement':
         return null;
@@ -278,6 +334,11 @@ function formatDefault(
     return `.Default(${defaultValue})`;
   }
   if (typeof defaultValue === 'string') {
+    // BigInt defaults are serialized as strings in the DMMF.
+    // If the Prisma type is BigInt and the string is a valid number, emit as numeric.
+    if (prismaType === 'BigInt' && /^-?\d+$/.test(defaultValue)) {
+      return `.Default(${defaultValue})`;
+    }
     return `.Default("${escapeGoString(defaultValue)}")`;
   }
 

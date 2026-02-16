@@ -68,12 +68,11 @@ describe('generateFields', () => {
     expect(lines[0]).toContain('.Unique()');
   });
 
-  it('generates an optional field with Nillable', () => {
+  it('generates an optional field', () => {
     const fields = [makeField({ name: 'bio', type: 'String', isRequired: false })];
     const imports = createEmptyImports();
     const lines = generateFields(fields, new Set(), emptyEnumDefs, imports);
     expect(lines[0]).toContain('.Optional()');
-    expect(lines[0]).toContain('.Nillable()');
   });
 
   it('generates a Boolean field with default', () => {
@@ -101,7 +100,7 @@ describe('generateFields', () => {
     ];
     const imports = createEmptyImports();
     const lines = generateFields(fields, new Set(), emptyEnumDefs, imports);
-    expect(lines[0]).toBe('field.Int("view_count").Default(0)');
+    expect(lines[0]).toBe('field.Int("viewCount").Default(0)');
   });
 
   it('generates a DateTime field with now() default', () => {
@@ -115,7 +114,7 @@ describe('generateFields', () => {
     ];
     const imports = createEmptyImports();
     const lines = generateFields(fields, new Set(), emptyEnumDefs, imports);
-    expect(lines[0]).toBe('field.Time("created_at").Default(time.Now)');
+    expect(lines[0]).toBe('field.Time("createdAt").Default(time.Now)');
     expect(imports.time).toBe(true);
   });
 
@@ -226,6 +225,6 @@ describe('generateFields', () => {
     const imports = createEmptyImports();
     const lines = generateFields(fields, fkNames, emptyEnumDefs, imports);
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toBe('field.Int("author_id")');
+    expect(lines[0]).toBe('field.Int("authorId")');
   });
 });

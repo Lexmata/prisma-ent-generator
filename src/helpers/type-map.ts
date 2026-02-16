@@ -12,6 +12,10 @@ export interface GoImports {
   edge: boolean;
   /** Whether "entgo.io/ent/schema/index" is needed (for indexes). */
   index: boolean;
+  /** Whether "entgo.io/ent/schema" is needed (for Annotations). */
+  schema: boolean;
+  /** Whether "entgo.io/ent/dialect/entsql" is needed (for table name annotations). */
+  entsql: boolean;
 }
 
 /**
@@ -24,6 +28,8 @@ export function createEmptyImports(): GoImports {
     field: false,
     edge: false,
     index: false,
+    schema: false,
+    entsql: false,
   };
 }
 
@@ -35,7 +41,7 @@ export function createEmptyImports(): GoImports {
  * String       → String
  * Boolean      → Bool
  * Int          → Int
- * BigInt       → Int     (int64 in Go)
+ * BigInt       → Int64   (int64 in Go, Ent uses field.Int for int32)
  * Float        → Float
  * Decimal      → Float   (float64 in Go)
  * DateTime     → Time
@@ -46,7 +52,7 @@ const PRISMA_TO_ENT_FIELD: Record<string, string> = {
   String: 'String',
   Boolean: 'Bool',
   Int: 'Int',
-  BigInt: 'Int',
+  BigInt: 'Int64',
   Float: 'Float',
   Decimal: 'Float',
   DateTime: 'Time',
@@ -78,11 +84,17 @@ export function buildImportBlock(imports: GoImports): string {
   lines.push('import (');
   lines.push('\t"entgo.io/ent"');
 
-  if (imports.field) {
-    lines.push('\t"entgo.io/ent/schema/field"');
+  if (imports.entsql) {
+    lines.push('\t"entgo.io/ent/dialect/entsql"');
+  }
+  if (imports.schema) {
+    lines.push('\t"entgo.io/ent/schema"');
   }
   if (imports.edge) {
     lines.push('\t"entgo.io/ent/schema/edge"');
+  }
+  if (imports.field) {
+    lines.push('\t"entgo.io/ent/schema/field"');
   }
   if (imports.index) {
     lines.push('\t"entgo.io/ent/schema/index"');
@@ -114,4 +126,34 @@ export function buildImportBlock(imports: GoImports): string {
   lines.push(')');
 
   return lines.join('\n');
+}
+
+/**
+ * Check whether a field's native type indicates a UUID.
+ * Prisma encodes `@db.Uuid` as `['Uuid', []]`.
+ */
+export function isUuidNativeType(nativeType?: readonly [string, readonly string[]] | null): boolean {
+  return nativeType != null && nativeType[0] === 'Uuid';
+}
+
+/**
+ * Check whether a field's native type indicates a Text column.
+ * Prisma encodes `@db.Text` as `['Text', []]`.
+ */
+export function isTextNativeType(nativeType?: readonly [string, readonly string[]] | null): boolean {
+  return nativeType != null && nativeType[0] === 'Text';
+}
+
+/**
+ * Extract MaxLen from a native type like VarChar(N) or Char(N).
+ * Returns the length as a number, or null if not applicable.
+ */
+export function extractMaxLen(nativeType?: readonly [string, readonly string[]] | null): number | null {
+  if (nativeType == null) return null;
+  const [typeName, args] = nativeType;
+  if ((typeName === 'VarChar' || typeName === 'Char') && args.length > 0) {
+    const len = parseInt(args[0], 10);
+    return isNaN(len) ? null : len;
+  }
+  return null;
 }

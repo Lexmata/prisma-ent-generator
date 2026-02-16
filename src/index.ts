@@ -8,6 +8,9 @@ export {
   buildImportBlock,
   createEmptyImports,
   requiresTimeImport,
+  isUuidNativeType,
+  isTextNativeType,
+  extractMaxLen,
   type GoImports,
 } from './helpers/type-map';
 export { toSnakeCase, modelToFileName, fileHeader, indent } from './utils';

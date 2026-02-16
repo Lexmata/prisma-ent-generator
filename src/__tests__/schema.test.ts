@@ -211,10 +211,10 @@ describe('generateSchema', () => {
 
     // Fields
     expect(output).toContain('field.String("email").Unique()');
-    expect(output).toContain('field.String("name").Optional().Nillable()');
+    expect(output).toContain('field.String("name").Optional()');
     expect(output).toContain('field.Enum("role").Values("USER", "ADMIN", "MODERATOR").Default("USER")');
-    expect(output).toContain('field.Time("created_at").Default(time.Now)');
-    expect(output).toContain('field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now)');
+    expect(output).toContain('field.Time("createdAt").Default(time.Now)');
+    expect(output).toContain('field.Time("updatedAt").Default(time.Now).UpdateDefault(time.Now)');
 
     // Edges
     expect(output).toContain('edge.To("posts", Post.Type)');

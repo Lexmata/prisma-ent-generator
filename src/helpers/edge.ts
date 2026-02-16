@@ -1,6 +1,5 @@
 import type { DMMF } from '@prisma/generator-helper';
 import type { GoImports } from './type-map';
-import { toSnakeCase } from '../utils';
 
 /**
  * Information about a generated Ent edge.
@@ -67,7 +66,7 @@ function generateEdge(
     inverseField?.relationFromFields !== undefined &&
     inverseField.relationFromFields.length > 0;
 
-  const edgeName = toSnakeCase(field.name);
+  const edgeName = field.name;
 
   if (hasFK) {
     // This model holds the FK → edge.From (back-reference)
@@ -98,7 +97,7 @@ function buildEdgeFrom(
   targetModelName: string,
   inverseField: DMMF.Field | undefined,
 ): string {
-  const refName = inverseField ? toSnakeCase(inverseField.name) : toSnakeCase(targetModelName);
+  const refName = inverseField ? inverseField.name : targetModelName;
 
   const parts: string[] = [];
   parts.push(`edge.From("${edgeName}", ${targetModelName}.Type)`);
@@ -107,7 +106,7 @@ function buildEdgeFrom(
 
   // Bind the FK field to this edge
   if (field.relationFromFields && field.relationFromFields.length > 0) {
-    const fkFieldName = toSnakeCase(field.relationFromFields[0]);
+    const fkFieldName = field.relationFromFields[0];
     parts.push(`.Field("${fkFieldName}")`);
   }
 
@@ -170,7 +169,7 @@ function buildImplicitEdge(
   }
 
   // Back-reference
-  const refName = inverseField ? toSnakeCase(inverseField.name) : toSnakeCase(targetModelName);
+  const refName = inverseField ? inverseField.name : targetModelName;
   const parts: string[] = [];
   parts.push(`edge.From("${edgeName}", ${targetModelName}.Type)`);
   parts.push(`.Ref("${refName}")`);
