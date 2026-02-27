@@ -6,21 +6,24 @@ import { generateGenerateGo, generateEntcGo } from './helpers/entfiles';
 import { modelToFileName, fileHeader } from './utils';
 
 /**
- * Check whether the generator is enabled via the `isEnabled` config property
- * in the Prisma generator block.
+ * Resolve the `isEnabled` generator config value.
  *
- * The property should reference an environment variable using Prisma's `env()`:
+ * Prisma passes custom `env()` config properties as the raw env var **name**,
+ * not the resolved value. This function handles both cases:
+ *   - Direct value: `isEnabled = "true"` → configValue is `"true"`
+ *   - Env reference: `isEnabled = env("GENERATE_ENT")` → configValue is `"GENERATE_ENT"`
  *
- *   generator ent {
- *     isEnabled = env("GENERATE_ENT")
- *   }
- *
- * Prisma resolves the env var and passes the value through
- * `options.generator.config.isEnabled`. Returns true only when the
- * resolved value is "true" (case-insensitive).
+ * Returns true when the final resolved value is "true" (case-insensitive).
  */
 export function isEnabled(configValue?: string): boolean {
-  return configValue?.toLowerCase() === 'true';
+  if (!configValue) return false;
+
+  if (configValue.toLowerCase() === 'true' || configValue.toLowerCase() === 'false') {
+    return configValue.toLowerCase() === 'true';
+  }
+
+  const envValue = process.env[configValue];
+  return envValue?.toLowerCase() === 'true';
 }
 
 /**
