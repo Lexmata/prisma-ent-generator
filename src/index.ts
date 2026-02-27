@@ -1,6 +1,6 @@
 export { generate, isEnabled } from './generator';
 export { generateSchema } from './helpers/schema';
-export { generateFields, collectFKFieldNames } from './helpers/field';
+export { generateFields, collectFKFieldNames, parseJsonTypeAnnotation } from './helpers/field';
 export { generateEdges } from './helpers/edge';
 export { generateGenerateGo, generateEntcGo } from './helpers/entfiles';
 export {

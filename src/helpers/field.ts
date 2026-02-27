@@ -239,10 +239,33 @@ function generateScalarField(
 }
 
 /**
+ * Parse a `@ent.json` annotation from a field's documentation comment.
+ *
+ * Supported values: `array`, `object`.
+ * Returns `'array'` or `'object'`, defaulting to `'object'` when absent.
+ */
+export function parseJsonTypeAnnotation(documentation?: string): 'array' | 'object' {
+  if (!documentation) return 'object';
+  const match = documentation.match(/@ent\.json\s+(array|object)\b/);
+  return (match?.[1] as 'array' | 'object') ?? 'object';
+}
+
+/**
+ * Return the Go type literal for a JSON field based on the annotation.
+ */
+function jsonGoType(kind: 'array' | 'object'): string {
+  return kind === 'array' ? '[]interface{}{}' : 'map[string]interface{}{}';
+}
+
+/**
  * Generate an Ent JSON field definition.
  *
  * Ent's field.JSON requires two arguments: the field name and a Go type value.
- * Uses `map[string]interface{}{}` as the generic type for Prisma's `Json`.
+ * The Go type is determined by an optional `@ent.json array` or `@ent.json object`
+ * annotation in the field's documentation comment:
+ *   - `@ent.json array`  → `[]interface{}{}`
+ *   - `@ent.json object` → `map[string]interface{}{}` (default)
+ *
  * JSON fields support `.Optional()` but not `.Nillable()`.
  */
 function generateJsonField(
@@ -251,8 +274,9 @@ function generateJsonField(
   imports: GoImports,
 ): string {
   const parts: string[] = [];
+  const jsonKind = parseJsonTypeAnnotation(field.documentation);
 
-  parts.push(`field.JSON("${fieldName}", map[string]interface{}{})`);
+  parts.push(`field.JSON("${fieldName}", ${jsonGoType(jsonKind)})`);
 
   // StorageKey from @map annotation
   if (field.dbName) {

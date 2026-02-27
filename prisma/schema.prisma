@@ -54,7 +54,10 @@ model Post {
   authorId  Int
   tags      Tag[]
   viewCount Int        @default(0)
+  /// @ent.json object
   metadata  Json?
+  /// @ent.json array
+  labels    Json?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
