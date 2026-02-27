@@ -15,6 +15,7 @@ Define your data model once in Prisma and generate fully working Ent schemas —
 - **Defaults** — `@default(now())`, `@default(uuid())`, `@default(autoincrement())`, `@default(false)`, `@default(0)`, `@default("value")`, and enum defaults
 - **@updatedAt** — maps to `.Default(time.Now).UpdateDefault(time.Now)`
 - **UUID IDs** — `@id @default(uuid())` generates `field.UUID("id", uuid.UUID{}).Default(uuid.New)`
+- **JSON type annotations** — annotate `Json` fields with `/// @ent.json array` or `/// @ent.json object` to control the Go type (`[]interface{}{}` vs `map[string]interface{}{}`); defaults to object
 - **Optional / Nillable** — optional fields get `.Optional().Nillable()` (except JSON, which only gets `.Optional()`)
 
 ## Installation
@@ -99,6 +100,10 @@ model Post {
   author   User   @relation(fields: [authorId], references: [id])
   authorId Int
   tags     Tag[]
+  /// @ent.json object
+  metadata Json?
+  /// @ent.json array
+  labels   Json?
 }
 
 model Tag {
@@ -163,6 +168,8 @@ func (Post) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("title"),
 		field.Int("author_id"),
+		field.JSON("metadata", map[string]interface{}{}).Optional(),
+		field.JSON("labels", []interface{}{}).Optional(),
 	}
 }
 
@@ -185,9 +192,33 @@ func (Post) Edges() []ent.Edge {
 | `Float` | `field.Float` | |
 | `Decimal` | `field.Float` | float64 in Go |
 | `DateTime` | `field.Time` | Imports `"time"` |
-| `Json` | `field.JSON` | Second arg: `map[string]interface{}{}` |
+| `Json` | `field.JSON` | `map[string]interface{}{}` or `[]interface{}{}`; see [JSON type annotations](#json-type-annotations) |
 | `Bytes` | `field.Bytes` | |
 | Enums | `field.Enum` | Inline `.Values(...)` |
+
+## JSON Type Annotations
+
+Prisma's `Json` type doesn't distinguish between objects and arrays. Use `///` doc comments with the `@ent.json` directive to control the Go type emitted in the Ent schema:
+
+```prisma
+model Post {
+  /// @ent.json object
+  metadata Json?           // → field.JSON("metadata", map[string]interface{}{})
+
+  /// @ent.json array
+  labels   Json?           // → field.JSON("labels", []interface{}{})
+
+  config   Json            // → field.JSON("config", map[string]interface{}{})  (default)
+}
+```
+
+| Annotation | Go Type | When to use |
+|---|---|---|
+| `@ent.json object` | `map[string]interface{}{}` | JSON objects / key-value maps |
+| `@ent.json array` | `[]interface{}{}` | JSON arrays / lists |
+| *(none)* | `map[string]interface{}{}` | Defaults to object |
+
+The annotation can appear alongside other documentation comments — the generator looks for the `@ent.json` directive anywhere in the field's doc block.
 
 ## Edge Mapping
 
