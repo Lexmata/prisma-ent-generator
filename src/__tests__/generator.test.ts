@@ -1,49 +1,32 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { isEnabled } from '../generator';
 
 describe('isEnabled', () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    process.env = { ...originalEnv };
+  it('returns false when config value is undefined', () => {
+    expect(isEnabled(undefined)).toBe(false);
   });
 
-  afterEach(() => {
-    process.env = originalEnv;
+  it('returns false when config value is empty string', () => {
+    expect(isEnabled('')).toBe(false);
   });
 
-  it('returns false when GENERATE_ENT is not set', () => {
-    delete process.env.GENERATE_ENT;
-    expect(isEnabled()).toBe(false);
+  it('returns false when config value is "false"', () => {
+    expect(isEnabled('false')).toBe(false);
   });
 
-  it('returns false when GENERATE_ENT is empty string', () => {
-    process.env.GENERATE_ENT = '';
-    expect(isEnabled()).toBe(false);
+  it('returns false when config value is "0"', () => {
+    expect(isEnabled('0')).toBe(false);
   });
 
-  it('returns false when GENERATE_ENT is "false"', () => {
-    process.env.GENERATE_ENT = 'false';
-    expect(isEnabled()).toBe(false);
+  it('returns true when config value is "true"', () => {
+    expect(isEnabled('true')).toBe(true);
   });
 
-  it('returns false when GENERATE_ENT is "0"', () => {
-    process.env.GENERATE_ENT = '0';
-    expect(isEnabled()).toBe(false);
+  it('returns true when config value is "TRUE" (case insensitive)', () => {
+    expect(isEnabled('TRUE')).toBe(true);
   });
 
-  it('returns true when GENERATE_ENT is "true"', () => {
-    process.env.GENERATE_ENT = 'true';
-    expect(isEnabled()).toBe(true);
-  });
-
-  it('returns true when GENERATE_ENT is "TRUE" (case insensitive)', () => {
-    process.env.GENERATE_ENT = 'TRUE';
-    expect(isEnabled()).toBe(true);
-  });
-
-  it('returns true when GENERATE_ENT is "True" (case insensitive)', () => {
-    process.env.GENERATE_ENT = 'True';
-    expect(isEnabled()).toBe(true);
+  it('returns true when config value is "True" (case insensitive)', () => {
+    expect(isEnabled('True')).toBe(true);
   });
 });

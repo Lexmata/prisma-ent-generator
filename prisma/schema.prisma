@@ -4,8 +4,9 @@ datasource db {
 }
 
 generator ent {
-  provider = "node ./dist/bin.js"
-  output   = "./generated/ent"
+  provider  = "node ./dist/bin.js"
+  output    = "./generated/ent"
+  isEnabled = env("GENERATE_ENT")
 }
 
 /// Role of a user in the system

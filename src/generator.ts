@@ -6,17 +6,21 @@ import { generateGenerateGo, generateEntcGo } from './helpers/entfiles';
 import { modelToFileName, fileHeader } from './utils';
 
 /**
- * The environment variable that controls whether the generator runs.
- * Set to "true" to enable generation; any other value or absence disables it.
+ * Check whether the generator is enabled via the `isEnabled` config property
+ * in the Prisma generator block.
+ *
+ * The property should reference an environment variable using Prisma's `env()`:
+ *
+ *   generator ent {
+ *     isEnabled = env("GENERATE_ENT")
+ *   }
+ *
+ * Prisma resolves the env var and passes the value through
+ * `options.generator.config.isEnabled`. Returns true only when the
+ * resolved value is "true" (case-insensitive).
  */
-const ENV_VAR = 'GENERATE_ENT';
-
-/**
- * Check whether the generator is enabled via the GENERATE_ENT environment variable.
- * Defaults to disabled if the variable is absent or not set to "true".
- */
-export function isEnabled(): boolean {
-  return process.env[ENV_VAR]?.toLowerCase() === 'true';
+export function isEnabled(configValue?: string): boolean {
+  return configValue?.toLowerCase() === 'true';
 }
 
 /**
@@ -33,9 +37,11 @@ export function isEnabled(): boolean {
  *       ...
  */
 export async function generate(options: GeneratorOptions): Promise<void> {
-  if (!isEnabled()) {
+  const isEnabledValue = options.generator.config.isEnabled;
+  const configValue = Array.isArray(isEnabledValue) ? isEnabledValue[0] : isEnabledValue;
+  if (!isEnabled(configValue)) {
     console.log(
-      `prisma-ent-generator: Skipping — set ${ENV_VAR}=true to enable.`,
+      'prisma-ent-generator: Skipping — set isEnabled = env("GENERATE_ENT") to "true" in your generator config.',
     );
     return;
   }

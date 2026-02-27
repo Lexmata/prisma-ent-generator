@@ -7,7 +7,7 @@ Define your data model once in Prisma and generate fully working Ent schemas —
 ## Features
 
 - **Full Ent install** — generates `generate.go`, `entc.go`, and `schema/*.go` so you can immediately run `go generate ./ent`
-- **Environment variable toggle** — controlled by `GENERATE_ENT`; skips when unset or `false`, runs when set to `true`
+- **Environment variable toggle** — controlled by `isEnabled = env("GENERATE_ENT")` in the generator config; skips when unset or `false`, runs when `true`
 - **Scalar type mapping** — `String`, `Int`, `BigInt`, `Float`, `Decimal`, `Boolean`, `DateTime`, `Json`, `Bytes`
 - **Enum support** — Prisma enums map to inline `field.Enum(...).Values(...)` with defaults
 - **Relationship edges** — O2O, O2M, and M2M relations are translated to `edge.To` / `edge.From` with correct ownership, `.Ref()`, `.Unique()`, and `.Required()`
@@ -32,8 +32,9 @@ pnpm add @lexmata/prisma-ent-generator
 
 ```prisma
 generator ent {
-  provider = "@lexmata/prisma-ent-generator"
-  output   = "./ent"
+  provider  = "@lexmata/prisma-ent-generator"
+  output    = "./ent"
+  isEnabled = env("GENERATE_ENT")
 }
 ```
 
@@ -43,11 +44,13 @@ generator ent {
 GENERATE_ENT=true npx prisma generate
 ```
 
-Without `GENERATE_ENT=true`, the generator prints a skip message and produces no output:
+When `isEnabled` resolves to anything other than `"true"`, the generator prints a skip message and produces no output:
 
 ```
-prisma-ent-generator: Skipping — set GENERATE_ENT=true to enable.
+prisma-ent-generator: Skipping — set isEnabled = env("GENERATE_ENT") to "true" in your generator config.
 ```
+
+You can use any environment variable name you like — just change the `env()` argument accordingly.
 
 ### 3. Run Ent code generation
 
