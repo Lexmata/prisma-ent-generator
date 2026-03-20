@@ -83,7 +83,11 @@ export function generateSchema(
 
   // Struct definition
   if (model.documentation) {
-    lines.push(`// ${typeName} ${model.documentation}`);
+    const docLines = model.documentation.split('\n');
+    lines.push(`// ${typeName} ${docLines[0]}`);
+    for (let i = 1; i < docLines.length; i++) {
+      lines.push(docLines[i].trim() ? `// ${docLines[i]}` : '//');
+    }
   } else {
     lines.push(`// ${typeName} holds the schema definition for the ${typeName} entity.`);
   }

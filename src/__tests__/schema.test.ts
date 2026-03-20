@@ -74,6 +74,41 @@ describe('generateSchema', () => {
     expect(output).toContain('// User A user in the system');
   });
 
+  it('prefixes all lines of multi-line documentation with //', () => {
+    const doc = 'Stores per-firm API credentials. apiKeyEncrypted uses AES-256-GCM\nwith a key sourced from AWS SSM Parameter Store.';
+    const model = makeModel('Connection', [
+      makeField({
+        name: 'id',
+        type: 'Int',
+        isId: true,
+        hasDefaultValue: true,
+        default: { name: 'autoincrement', args: [] },
+      }),
+    ], doc);
+
+    const output = generateSchema(model, [model], new Map());
+    expect(output).toContain('// Connection Stores per-firm API credentials. apiKeyEncrypted uses AES-256-GCM');
+    expect(output).toContain('// with a key sourced from AWS SSM Parameter Store.');
+    expect(output).not.toMatch(/\n[^/\n][^/][^\n]*\ntype Connection/);
+  });
+
+  it('handles empty lines in multi-line documentation', () => {
+    const doc = 'First line.\n\nThird line after blank.';
+    const model = makeModel('Widget', [
+      makeField({
+        name: 'id',
+        type: 'Int',
+        isId: true,
+        hasDefaultValue: true,
+        default: { name: 'autoincrement', args: [] },
+      }),
+    ], doc);
+
+    const output = generateSchema(model, [model], new Map());
+    expect(output).toContain('// Widget First line.');
+    expect(output).toContain('//\n// Third line after blank.');
+  });
+
   it('generates imports based on field types', () => {
     const model = makeModel('Event', [
       makeField({
