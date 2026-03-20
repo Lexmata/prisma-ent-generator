@@ -7,3 +7,4 @@ dist/
 !vitest.config.ts
 .env
 prisma/generated/
+.worktrees/
