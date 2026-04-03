@@ -4,6 +4,18 @@ A [Prisma](https://www.prisma.io/) generator that produces a complete [Go Ent](h
 
 Define your data model once in Prisma and generate fully working Ent schemas — including fields, edges, enums, and the `generate.go` / `entc.go` scaffolding needed to run `go generate`.
 
+## Status
+
+**Active** -- used in production across multiple Lexmata Go services. Published to npm as `@lexmata/prisma-ent-generator`.
+
+## Tech Stack
+
+- **Language:** TypeScript (compiled to CommonJS)
+- **Runtime:** Node.js >= 24
+- **Framework:** Prisma Generator Helper (`@prisma/generator-helper` v6)
+- **Testing:** Vitest
+- **Build:** `tsc`
+
 ## Features
 
 - **Full Ent install** — generates `generate.go`, `entc.go`, and `schema/*.go` so you can immediately run `go generate ./ent`
@@ -17,6 +29,14 @@ Define your data model once in Prisma and generate fully working Ent schemas —
 - **UUID IDs** — `@id @default(uuid())` generates `field.UUID("id", uuid.UUID{}).Default(uuid.New)`
 - **JSON type annotations** — annotate `Json` fields with `/// @ent.json array` or `/// @ent.json object` to control the Go type (`[]interface{}{}` vs `map[string]interface{}{}`); defaults to object
 - **Optional / Nillable** — optional fields get `.Optional().Nillable()` (except JSON, which only gets `.Optional()`)
+
+## Prerequisites
+
+- Node.js >= 24
+- pnpm (recommended) or npm
+- Prisma >= 6.0.0 in your project
+- Go toolchain (to run `go generate ./ent` after generation)
+- A Go project with Ent as a dependency (`go get entgo.io/ent`)
 
 ## Installation
 
@@ -191,7 +211,7 @@ func (Post) Edges() []ent.Edge {
 | `String` | `field.String` | |
 | `Boolean` | `field.Bool` | |
 | `Int` | `field.Int` | |
-| `BigInt` | `field.Int` | int64 in Go |
+| `BigInt` | `field.Int64` | int64 in Go |
 | `Float` | `field.Float` | |
 | `Decimal` | `field.Float` | float64 in Go |
 | `DateTime` | `field.Time` | Imports `"time"` |
@@ -236,6 +256,14 @@ The annotation can appear alongside other documentation comments — the generat
 
 M2M ownership is determined alphabetically by model name when neither side holds a FK.
 
+## Environment Variables
+
+| Variable | Values | Default | Description |
+|---|---|---|---|
+| `GENERATE_ENT` | `"true"` to enable | Disabled (skips generation) | Controls whether the generator runs during `prisma generate` |
+
+The env-var toggle makes it safe to include this generator in a shared `schema.prisma` without it running on every `prisma generate`. Only CI or Go-service environments that set the variable will produce output.
+
 ## Development
 
 ```bash
@@ -250,6 +278,71 @@ To test generation locally:
 pnpm build
 GENERATE_ENT=true npx prisma generate --schema=prisma/schema.prisma
 ```
+
+## Testing
+
+```bash
+# Run all tests once
+pnpm test
+
+# Run in watch mode during development
+pnpm test:watch
+```
+
+Tests are in `src/__tests__/` and cover:
+
+| Test file | Coverage |
+|---|---|
+| `type-map.test.ts` | Prisma-to-Ent type mapping, import block generation |
+| `field.test.ts` | Scalar fields, ID fields, JSON annotations, defaults, optional/nillable |
+| `edge.test.ts` | O2O, O2M, M2M edges, FK binding, self-referential relations |
+| `entfiles.test.ts` | `generate.go` and `entc.go` scaffold content |
+| `schema.test.ts` | Full schema generation from DMMF models |
+| `generator.test.ts` | `isEnabled` config resolution logic |
+| `utils.test.ts` | Snake case conversion, Go keyword safety, file naming |
+
+## Publishing
+
+Publishing is manual via `pnpm publish`. The `prepublishOnly` script runs `pnpm build` automatically before each publish.
+
+```bash
+# Bump version in package.json, then:
+pnpm publish --access public
+```
+
+There is no CI/CD pipeline for this repo; publishing is done from a developer machine with npm credentials.
+
+## Project Structure
+
+```
+prisma-ent-generator/
+├── src/
+│   ├── index.ts              # Public API re-exports
+│   ├── bin.ts                # CLI entry point for Prisma
+│   ├── generator.ts          # Main generator (isEnabled check, file I/O)
+│   ├── utils.ts              # snake_case, Go keyword safety, file headers
+│   ├── helpers/
+│   │   ├── type-map.ts       # Prisma → Ent type mapping, Go import tracking
+│   │   ├── field.ts          # Ent field generation (scalars, IDs, JSON, enums)
+│   │   ├── edge.ts           # Ent edge generation (O2O, O2M, M2M ownership)
+│   │   ├── schema.ts         # Full schema file assembly per model
+│   │   └── entfiles.ts       # generate.go / entc.go scaffold templates
+│   └── __tests__/            # Vitest tests (one per helper)
+├── prisma/
+│   └── schema.prisma         # Example schema for local testing
+├── package.json
+├── tsconfig.json
+└── vitest.config.ts
+```
+
+## Related Repos
+
+| Repo | Relationship |
+|---|---|
+| `lexmata-models` | Prisma schema source -- the canonical data model this generator reads |
+| `lexmata-identification` | Go Ent consumer -- uses the generated schemas |
+| `lexmata-organization` | Go Ent consumer -- uses the generated schemas |
+| `lexmata-initial-case-evaluation` | Go Ent consumer -- uses the generated schemas |
 
 ## License
 
