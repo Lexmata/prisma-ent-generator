@@ -167,6 +167,26 @@ describe('generateFields', () => {
     expect(imports.uuid).toBe(true);
   });
 
+  it('generates a non-id UUID field with uuid() default using .Default(uuid.New)', () => {
+    const fields = [
+      makeField({
+        name: 'documentId',
+        type: 'String',
+        isUnique: true,
+        hasDefaultValue: true,
+        default: { name: 'uuid', args: [] },
+        nativeType: ['Uuid', []],
+      } as Partial<DMMF.Field>),
+    ];
+    const imports = createEmptyImports();
+    const lines = generateFields(fields, new Set(), emptyEnumDefs, imports);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('field.UUID("documentId", uuid.UUID{})');
+    expect(lines[0]).toContain('.Default(uuid.New)');
+    expect(lines[0]).not.toContain('.DefaultFunc');
+    expect(imports.uuid).toBe(true);
+  });
+
   it('skips relation (object) fields', () => {
     const fields = [
       makeField({ name: 'author', kind: 'object', type: 'User' }),
