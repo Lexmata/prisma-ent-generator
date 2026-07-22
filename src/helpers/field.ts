@@ -355,7 +355,7 @@ function formatDefault(
         return '.Default(time.Now)';
       case 'uuid':
         imports.uuid = true;
-        return '.DefaultFunc(uuid.NewString)';
+        return isUuidField ? '.Default(uuid.New)' : '.DefaultFunc(uuid.NewString)';
       case 'cuid':
         return '/* .DefaultFunc(cuid.New) — add a CUID library */';
       case 'autoincrement':
