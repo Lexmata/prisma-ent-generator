@@ -62,6 +62,12 @@ See the README section on JSON Type Annotations for details.
 
 This is expected behavior. The Go file name also uses the suffixed form (e.g., `type_entity.go`).
 
+## Ent Edge Name Conflicts
+
+**Symptom:** A Prisma relation field named `field` generates an Ent edge named `fieldEdge` (so the Go API is `WithFieldEdge()`, `QueryFieldEdge()`, `Edges.FieldEdge`).
+
+**Cause:** Ent generates per-edge mutation methods from the edge name, and a few names collide with Ent's own mutation API. For example, an edge named `field` generates `FieldCleared()`, which clashes with `Mutation.FieldCleared(name string)`, and the generated package fails to compile with `not enough arguments in call to ...mutation.FieldCleared`. The generator appends `Edge` to relation fields named `field`, `edge`, `added`, `removed`, or `id`, and points the inverse edge's `.Ref()` at the renamed edge. The database columns and the FK field are unchanged.
+
 ## FK Fields Marked Optional When Relation Is Optional
 
 **Symptom:** A foreign key field that is `Int` (not `Int?`) in Prisma gets `.Optional()` in the generated Ent schema.

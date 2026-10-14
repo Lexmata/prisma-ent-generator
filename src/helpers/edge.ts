@@ -1,6 +1,6 @@
 import type { DMMF } from '@prisma/generator-helper';
 import type { GoImports } from './type-map';
-import { safeGoTypeName } from '../utils';
+import { safeEdgeName, safeGoTypeName } from '../utils';
 
 /**
  * Information about a generated Ent edge.
@@ -67,7 +67,7 @@ function generateEdge(
     inverseField?.relationFromFields !== undefined &&
     inverseField.relationFromFields.length > 0;
 
-  const edgeName = field.name;
+  const edgeName = safeEdgeName(field.name);
 
   if (hasFK) {
     // This model holds the FK → edge.From (back-reference)
@@ -98,7 +98,7 @@ function buildEdgeFrom(
   targetModelName: string,
   inverseField: DMMF.Field | undefined,
 ): string {
-  const refName = inverseField ? inverseField.name : targetModelName;
+  const refName = inverseField ? safeEdgeName(inverseField.name) : targetModelName;
 
   const parts: string[] = [];
   const safeTarget = safeGoTypeName(targetModelName);
@@ -172,7 +172,7 @@ function buildImplicitEdge(
   }
 
   // Back-reference
-  const refName = inverseField ? inverseField.name : targetModelName;
+  const refName = inverseField ? safeEdgeName(inverseField.name) : targetModelName;
   const safeTarget = safeGoTypeName(targetModelName);
   const parts: string[] = [];
   parts.push(`edge.From("${edgeName}", ${safeTarget}.Type)`);
