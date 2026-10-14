@@ -37,6 +37,25 @@ export function safeGoTypeName(modelName: string): string {
 }
 
 /**
+ * Relation field names (lowercase) whose Ent-generated edge methods collide
+ * with Ent's own mutation API, so the generated package does not compile.
+ * For example, an edge named "field" generates `FieldCleared()`, which clashes
+ * with `Mutation.FieldCleared(name string)`. Verified against ent v0.14.4.
+ */
+const ENT_RESERVED_EDGE_NAMES = new Set(['added', 'edge', 'field', 'id', 'removed']);
+
+/**
+ * Return an Ent-safe edge name for a Prisma relation field.
+ * Appends "Edge" if the name collides with Ent's generated mutation API.
+ */
+export function safeEdgeName(fieldName: string): string {
+  if (ENT_RESERVED_EDGE_NAMES.has(fieldName.toLowerCase())) {
+    return `${fieldName}Edge`;
+  }
+  return fieldName;
+}
+
+/**
  * Convert a PascalCase model name to a lowercase file name for Go files.
  *
  * @example

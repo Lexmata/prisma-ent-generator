@@ -231,3 +231,134 @@ describe('generateEdges', () => {
     expect(edges).toHaveLength(0);
   });
 });
+
+/**
+ * Build a Parent (owner, list side) / Child (FK side) relation whose two
+ * relation fields have the given names.
+ */
+function makeParentChild(parentFieldName: string, childFieldName: string) {
+  const parentModel = makeModel('Parent', [
+    makeField({
+      name: parentFieldName,
+      kind: 'object',
+      type: 'Child',
+      isList: true,
+      relationName: 'ParentChildren',
+      relationFromFields: [],
+      relationToFields: [],
+    }),
+  ]);
+  const childModel = makeModel('Child', [
+    makeField({
+      name: childFieldName,
+      kind: 'object',
+      type: 'Parent',
+      isList: false,
+      isRequired: true,
+      relationName: 'ParentChildren',
+      relationFromFields: ['parentId'],
+      relationToFields: ['id'],
+    }),
+    makeField({ name: 'parentId', type: 'String' }),
+  ]);
+  return { parentModel, childModel, allModels: [parentModel, childModel] };
+}
+
+describe('generateEdges with edge names that collide with Ent generated code', () => {
+  it('renames a FK-side edge named "field" (CaseCustomFieldValue.field)', () => {
+    const fieldModel = makeModel('CaseCustomField', [
+      makeField({
+        name: 'values',
+        kind: 'object',
+        type: 'CaseCustomFieldValue',
+        isList: true,
+        relationName: 'CaseCustomFieldToCaseCustomFieldValue',
+        relationFromFields: [],
+        relationToFields: [],
+      }),
+    ]);
+    const valueModel = makeModel('CaseCustomFieldValue', [
+      makeField({
+        name: 'field',
+        kind: 'object',
+        type: 'CaseCustomField',
+        isList: false,
+        isRequired: true,
+        relationName: 'CaseCustomFieldToCaseCustomFieldValue',
+        relationFromFields: ['fieldId'],
+        relationToFields: ['id'],
+      }),
+      makeField({ name: 'fieldId', type: 'String' }),
+    ]);
+
+    const edges = generateEdges(valueModel, [fieldModel, valueModel], createEmptyImports());
+
+    expect(edges).toEqual([
+      'edge.From("fieldEdge", CaseCustomField.Type).Ref("values").Unique().Field("fieldId").Required()',
+    ]);
+  });
+
+  it.each(['field', 'edge', 'added', 'removed', 'id'])(
+    'appends "Edge" to a FK-side edge named "%s"',
+    (name) => {
+      const { childModel, allModels } = makeParentChild('children', name);
+
+      const edges = generateEdges(childModel, allModels, createEmptyImports());
+
+      expect(edges).toHaveLength(1);
+      expect(edges[0]).toContain(`edge.From("${name}Edge", Parent.Type)`);
+    },
+  );
+
+  it('renames an owner-side edge and points the inverse Ref at the new name', () => {
+    const { parentModel, childModel, allModels } = makeParentChild('added', 'parent');
+
+    const parentEdges = generateEdges(parentModel, allModels, createEmptyImports());
+    const childEdges = generateEdges(childModel, allModels, createEmptyImports());
+
+    expect(parentEdges).toEqual(['edge.To("addedEdge", Child.Type)']);
+    expect(childEdges[0]).toContain('edge.From("parent", Parent.Type).Ref("addedEdge")');
+  });
+
+  it('points an implicit M2M back-reference Ref at the renamed owner edge', () => {
+    const postModel = makeModel('Post', [
+      makeField({
+        name: 'removed',
+        kind: 'object',
+        type: 'Tag',
+        isList: true,
+        relationName: 'PostTags',
+        relationFromFields: [],
+        relationToFields: [],
+      }),
+    ]);
+    const tagModel = makeModel('Tag', [
+      makeField({
+        name: 'posts',
+        kind: 'object',
+        type: 'Post',
+        isList: true,
+        relationName: 'PostTags',
+        relationFromFields: [],
+        relationToFields: [],
+      }),
+    ]);
+
+    const postEdges = generateEdges(postModel, [postModel, tagModel], createEmptyImports());
+    const tagEdges = generateEdges(tagModel, [postModel, tagModel], createEmptyImports());
+
+    expect(postEdges).toEqual(['edge.To("removedEdge", Tag.Type)']);
+    expect(tagEdges).toEqual(['edge.From("posts", Post.Type).Ref("removedEdge")']);
+  });
+
+  it.each(['fields', 'edges', 'fieldValue', 'ids'])(
+    'leaves the non-colliding edge name "%s" unchanged',
+    (name) => {
+      const { childModel, allModels } = makeParentChild('children', name);
+
+      const edges = generateEdges(childModel, allModels, createEmptyImports());
+
+      expect(edges[0]).toContain(`edge.From("${name}", Parent.Type)`);
+    },
+  );
+});
